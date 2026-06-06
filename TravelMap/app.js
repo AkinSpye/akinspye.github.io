@@ -976,6 +976,9 @@ const ui = {
   localResults: document.querySelector("#localResults"),
   mainLocal: document.querySelector("#mainLocal"),
   mainLocalText: document.querySelector("#mainLocalText"),
+  mobileMenuShell: document.querySelector("#mobileMenuShell"),
+  mobileMenuHandle: document.querySelector("#mobileMenuHandle"),
+  sidebar: document.querySelector(".sidebar"),
   detailDrawer: document.querySelector("#detailDrawer"),
   leafletMap: document.querySelector("#leafletMap"),
   mapLoader: document.querySelector("#mapLoader"),
@@ -991,6 +994,7 @@ const planVariantAnchor = new Date(2026, 0, 1);
 const initialCountry = getCountryForDate(today);
 const mapTypeStorageKey = "travelmap.preferredMapType";
 const allowedMapTypes = new Set(["light", "dark"]);
+const mobileMenuQuery = window.matchMedia("(max-width: 760px)");
 
 const state = {
   selectedDate: today,
@@ -1038,6 +1042,7 @@ init();
 function init() {
   setMapType(state.preferredMapType);
   bindTabs();
+  bindMobileMenu();
   bindControls();
   selectDate(today, { animate: true });
   locateUser();
@@ -1055,6 +1060,10 @@ function bindTabs() {
       const isSameOpenTab = ui.detailDrawer.classList.contains("open") && button.classList.contains("active");
 
       if (isSameOpenTab) {
+        if (isMobileMenuMode()) {
+          closeMobileMenu();
+          return;
+        }
         closeDetailDrawer();
         return;
       }
@@ -1071,21 +1080,193 @@ function bindTabs() {
     if (!ui.detailDrawer.classList.contains("open")) return;
     if (event.target.closest(".sidebar")) return;
     if (event.target.closest(".map-controls")) return;
+    if (isMobileMenuMode()) {
+      closeMobileMenu();
+      return;
+    }
     closeDetailDrawer();
   });
 }
 
-function openDetailDrawer(tab, button) {
+function activateDetailTab(tab, button) {
   document.querySelectorAll(".tab-button").forEach((item) => item.classList.toggle("active", item === button));
   document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.toggle("active", panel.id === `panel-${tab}`));
   ui.detailDrawer.classList.add("open");
   ui.detailDrawer.setAttribute("aria-hidden", "false");
 }
 
+function openDetailDrawer(tab, button) {
+  activateDetailTab(tab, button);
+  openMobileMenu({ ensureContent: false });
+}
+
 function closeDetailDrawer() {
+  if (isMobileMenuMode()) {
+    closeMobileMenu();
+    return;
+  }
   ui.detailDrawer.classList.remove("open");
   ui.detailDrawer.setAttribute("aria-hidden", "true");
   document.querySelectorAll(".tab-button").forEach((item) => item.classList.remove("active"));
+  closeMobileMenu();
+}
+
+function bindMobileMenu() {
+  if (!ui.mobileMenuShell || !ui.mobileMenuHandle) return;
+
+  let dragStartY = 0;
+  let dragDeltaY = 0;
+  let dragWasOpen = false;
+  let isPointerTracking = false;
+  let isDragging = false;
+  let suppressNextClick = false;
+  const visibleStrip = 72;
+
+  const syncMobileState = () => {
+    ui.mobileMenuShell.style.removeProperty("--mobile-menu-drag");
+    ui.mobileMenuShell.classList.remove("dragging");
+
+    if (!isMobileMenuMode()) {
+      ui.mobileMenuShell.classList.remove("open");
+      ui.mobileMenuShell.removeAttribute("aria-expanded");
+      ui.mobileMenuHandle.setAttribute("aria-label", "Otworz menu");
+      return;
+    }
+
+    ensureMobileMenuContent();
+    updateMobileMenuA11y();
+  };
+
+  const getClosedOffset = () => Math.max(0, ui.mobileMenuShell.getBoundingClientRect().height - visibleStrip);
+
+  ui.mobileMenuHandle.addEventListener("pointerdown", (event) => {
+    if (!isMobileMenuMode()) return;
+
+    dragStartY = event.clientY;
+    dragDeltaY = 0;
+    dragWasOpen = ui.mobileMenuShell.classList.contains("open");
+    isPointerTracking = true;
+    isDragging = false;
+    ui.mobileMenuHandle.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  });
+
+  ui.mobileMenuHandle.addEventListener("pointermove", (event) => {
+    if (!isPointerTracking) return;
+
+    dragDeltaY = event.clientY - dragStartY;
+    if (!isDragging && Math.abs(dragDeltaY) < 4) return;
+
+    if (!isDragging) {
+      isDragging = true;
+      ui.mobileMenuShell.classList.add("dragging");
+    }
+
+    const closedOffset = getClosedOffset();
+    const nextOffset = dragWasOpen
+      ? clamp(dragDeltaY, 0, closedOffset)
+      : clamp(closedOffset + dragDeltaY, 0, closedOffset);
+
+    ui.mobileMenuShell.style.setProperty("--mobile-menu-drag", `${nextOffset}px`);
+    event.preventDefault();
+  });
+
+  const finishDrag = (event) => {
+    if (!isPointerTracking) return;
+
+    isPointerTracking = false;
+    ui.mobileMenuHandle.releasePointerCapture?.(event.pointerId);
+
+    if (!isDragging) {
+      dragDeltaY = 0;
+      return;
+    }
+
+    const movedEnough = Math.abs(dragDeltaY) > 8;
+    suppressNextClick = movedEnough;
+    isDragging = false;
+    ui.mobileMenuShell.classList.remove("dragging");
+    ui.mobileMenuShell.style.removeProperty("--mobile-menu-drag");
+
+    if (dragDeltaY < -38) {
+      openMobileMenu();
+    } else if (dragDeltaY > 38) {
+      closeMobileMenu();
+    } else if (dragWasOpen) {
+      openMobileMenu();
+    } else {
+      closeMobileMenu();
+    }
+  };
+
+  ui.mobileMenuHandle.addEventListener("pointerup", finishDrag);
+  ui.mobileMenuHandle.addEventListener("pointercancel", finishDrag);
+
+  ui.mobileMenuHandle.addEventListener("click", () => {
+    if (!isMobileMenuMode()) return;
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      return;
+    }
+    toggleMobileMenu();
+  });
+
+  ui.sidebar?.addEventListener("click", (event) => {
+    if (!isMobileMenuMode()) return;
+    if (!ui.mobileMenuShell.classList.contains("open")) return;
+    if (event.target.closest(".mobile-menu-handle, .tab-button, .brand-link")) return;
+    closeMobileMenu();
+  });
+
+  if (mobileMenuQuery.addEventListener) {
+    mobileMenuQuery.addEventListener("change", syncMobileState);
+  } else {
+    mobileMenuQuery.addListener(syncMobileState);
+  }
+
+  syncMobileState();
+}
+
+function isMobileMenuMode() {
+  return Boolean(ui.mobileMenuShell && mobileMenuQuery.matches);
+}
+
+function ensureMobileMenuContent() {
+  if (!isMobileMenuMode()) return;
+  if (ui.detailDrawer.classList.contains("open")) return;
+
+  const defaultButton = document.querySelector('.tab-button[data-tab="today"]');
+  if (!defaultButton) return;
+
+  activateDetailTab("today", defaultButton);
+}
+
+function openMobileMenu(options = {}) {
+  if (!isMobileMenuMode()) return;
+  if (options.ensureContent !== false) ensureMobileMenuContent();
+  ui.mobileMenuShell.classList.add("open");
+  updateMobileMenuA11y();
+}
+
+function closeMobileMenu() {
+  if (!isMobileMenuMode()) return;
+  ui.mobileMenuShell.classList.remove("open");
+  updateMobileMenuA11y();
+}
+
+function toggleMobileMenu() {
+  if (!isMobileMenuMode()) return;
+  if (ui.mobileMenuShell.classList.contains("open")) {
+    closeMobileMenu();
+  } else {
+    openMobileMenu();
+  }
+}
+
+function updateMobileMenuA11y() {
+  const isOpen = ui.mobileMenuShell.classList.contains("open");
+  ui.mobileMenuShell.setAttribute("aria-expanded", String(isOpen));
+  ui.mobileMenuHandle?.setAttribute("aria-label", isOpen ? "Schowaj menu" : "Otworz menu");
 }
 
 function bindControls() {
@@ -1251,7 +1432,10 @@ function renderCalendar() {
     const countryLabel = document.createElement("small");
     countryLabel.textContent = locked ? "Niespodzianka" : country.name;
     button.append(dayNumber, countryLabel);
-    button.addEventListener("click", () => selectDate(date, { animate: true }));
+    button.addEventListener("click", () => {
+      selectDate(date, { animate: true });
+      closeMobileMenu();
+    });
     ui.calendarGrid.append(button);
   }
 }
@@ -1274,6 +1458,26 @@ function focusOnCountry(country, animate = true) {
   if (!animate) {
     state.centerLon = country.lon;
     state.centerLat = clamp(country.lat, -72, 72);
+  }
+}
+
+function focusOnLocalPlace(place, animate = true) {
+  if (!place || isFutureSelection()) return;
+
+  state.targetLon = place.lon;
+  state.targetLat = clamp(place.lat, -72, 72);
+  state.isFocusing = animate;
+
+  if (state.leafletMap) {
+    state.leafletMap.setView([place.lat, place.lon], 6, {
+      animate,
+      duration: animate ? 0.55 : 0
+    });
+  }
+
+  if (!animate) {
+    state.centerLon = place.lon;
+    state.centerLat = clamp(place.lat, -72, 72);
   }
 }
 
@@ -1848,6 +2052,9 @@ function renderLocalResults(results) {
   results.forEach((place) => {
     const card = document.createElement("article");
     card.className = "local-result";
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `Pokaz ${place.name} na mapie`);
 
     const title = document.createElement("strong");
     title.textContent = `${place.name}, ${place.country}`;
@@ -1855,6 +2062,18 @@ function renderLocalResults(results) {
     meta.textContent = place.distance == null
       ? `${place.mode} - ${place.type}. ${place.note}`
       : `${place.mode}: około ${Math.round(place.distance)} km od Ciebie - ${place.type}. ${place.note}`;
+
+    const selectLocalPlace = () => {
+      focusOnLocalPlace(place);
+      closeMobileMenu();
+    };
+
+    card.addEventListener("click", selectLocalPlace);
+    card.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      selectLocalPlace();
+    });
 
     card.append(title, meta);
     ui.localResults.append(card);
