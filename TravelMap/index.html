@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>TravelMap Calendar</title>
+    <link
+      rel="stylesheet"
+      href="vendor/leaflet/leaflet.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+      <symbol id="icon-calendar-check" viewBox="0 0 24 24">
+        <path d="M8 2v4" />
+        <path d="M16 2v4" />
+        <path d="M3 10h18" />
+        <path d="M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+        <path d="m9 16 2 2 4-5" />
+      </symbol>
+      <symbol id="icon-calendar-days" viewBox="0 0 24 24">
+        <path d="M8 2v4" />
+        <path d="M16 2v4" />
+        <path d="M3 10h18" />
+        <path d="M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+        <path d="M8 14h.01" />
+        <path d="M12 14h.01" />
+        <path d="M16 14h.01" />
+        <path d="M8 18h.01" />
+        <path d="M12 18h.01" />
+        <path d="M16 18h.01" />
+      </symbol>
+      <symbol id="icon-map-pin" viewBox="0 0 24 24">
+        <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 0 1 16 0z" />
+        <circle cx="12" cy="10" r="3" />
+      </symbol>
+      <symbol id="icon-globe" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M2 12h20" />
+        <path d="M12 2a15 15 0 0 1 0 20" />
+        <path d="M12 2a15 15 0 0 0 0 20" />
+      </symbol>
+      <symbol id="icon-chevron-left" viewBox="0 0 24 24">
+        <path d="m15 18-6-6 6-6" />
+      </symbol>
+      <symbol id="icon-chevron-right" viewBox="0 0 24 24">
+        <path d="m9 18 6-6-6-6" />
+      </symbol>
+      <symbol id="icon-crosshair" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="7" />
+        <path d="M12 2v3" />
+        <path d="M12 19v3" />
+        <path d="M2 12h3" />
+        <path d="M19 12h3" />
+        <circle cx="12" cy="12" r="2" />
+      </symbol>
+      <symbol id="icon-layers" viewBox="0 0 24 24">
+        <path d="m12 2 9 5-9 5-9-5 9-5z" />
+        <path d="m3 12 9 5 9-5" />
+        <path d="m3 17 9 5 9-5" />
+      </symbol>
+      <symbol id="icon-map" viewBox="0 0 24 24">
+        <path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6z" />
+        <path d="M9 3v15" />
+        <path d="M15 6v15" />
+      </symbol>
+      <symbol id="icon-moon" viewBox="0 0 24 24">
+        <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 8.5 8.5 0 1 0 20.5 14.5z" />
+      </symbol>
+      <symbol id="icon-satellite" viewBox="0 0 24 24">
+        <path d="M13 7 7 13" />
+        <path d="m8 6 6 6" />
+        <path d="m6 8 6 6" />
+        <path d="M15 13 21 7" />
+        <path d="M2 22 8 16" />
+        <path d="M16 16a5 5 0 0 1-5 5" />
+        <path d="M18 14a8 8 0 0 1-8 8" />
+      </symbol>
+      <symbol id="icon-map-layers" viewBox="0 0 24 24">
+        <path d="M4 6h10a2 2 0 0 1 2 2v10H6a2 2 0 0 1-2-2V6z" />
+        <path d="M8 4h10a2 2 0 0 1 2 2v10" />
+        <path d="M8 11h8" />
+        <path d="M8 15h5" />
+      </symbol>
+    </svg>
+    <div class="noise-layer" aria-hidden="true"></div>
+    <main class="app-shell">
+      <aside class="glass-panel sidebar" aria-label="Panel kalendarza i opcji">
+        <div class="brand">
+          <span class="brand-mark"><svg class="ui-icon" aria-hidden="true"><use href="#icon-globe"></use></svg></span>
+          <div>
+            <h1>TravelMap</h1>
+          </div>
+        </div>
+
+        <nav class="tabs" aria-label="Zakładki">
+          <button class="tab-button" data-tab="today" type="button">
+            <span class="tab-icon"><svg class="ui-icon" aria-hidden="true"><use href="#icon-calendar-check"></use></svg></span>
+            <span>Dzisiaj</span>
+          </button>
+          <button class="tab-button" data-tab="calendar" type="button">
+            <span class="tab-icon"><svg class="ui-icon" aria-hidden="true"><use href="#icon-calendar-days"></use></svg></span>
+            <span>Kalendarz</span>
+          </button>
+          <button class="tab-button" data-tab="local" type="button">
+            <span class="tab-icon"><svg class="ui-icon" aria-hidden="true"><use href="#icon-map-pin"></use></svg></span>
+            <span>Lokalnie</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-destination">
+          <span class="muted-label">Aktywny cel</span>
+          <strong id="activeDestination">-</strong>
+        </div>
+      </aside>
+
+      <section class="detail-drawer glass-panel" id="detailDrawer" aria-label="Szczegóły zakładki" aria-hidden="true">
+        <section class="tab-panel active" id="panel-today">
+          <article class="future-lock-card sidebar-card" id="futureLockCard" hidden>
+            <span class="muted-label">Niespodzianka</span>
+            <h2 id="futureLockTitle">Wróć później</h2>
+            <p id="futureLockText">Ten dzień jest jeszcze ukryty.</p>
+          </article>
+
+          <div class="date-card plan-reveal">
+            <span class="muted-label">Dzień planu</span>
+            <strong id="todayLabel">-</strong>
+          </div>
+
+          <article class="sidebar-card country-card plan-reveal">
+            <span class="muted-label">Wylosowany kraj</span>
+            <h2 id="countryName">-</h2>
+            <p id="countryRegion">-</p>
+          </article>
+
+          <article class="sidebar-card plan-reveal">
+            <span class="muted-label">Potrawa do przygotowania</span>
+            <h3 id="dishName">-</h3>
+            <p id="dishDescription">-</p>
+          </article>
+
+          <article class="sidebar-card plan-reveal">
+            <span class="muted-label">Miejsce z ruchem i klimatem</span>
+            <h3 id="adventureName">-</h3>
+            <p id="adventureDescription">-</p>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="panel-calendar">
+          <div class="month-controls">
+            <button class="icon-button" id="prevMonth" type="button" aria-label="Poprzedni miesiąc"><svg class="ui-icon" aria-hidden="true"><use href="#icon-chevron-left"></use></svg></button>
+            <strong id="monthLabel">-</strong>
+            <button class="icon-button" id="nextMonth" type="button" aria-label="Następny miesiąc"><svg class="ui-icon" aria-hidden="true"><use href="#icon-chevron-right"></use></svg></button>
+          </div>
+          <div class="calendar-weekdays" aria-hidden="true">
+            <span>Pn</span><span>Wt</span><span>Śr</span><span>Cz</span><span>Pt</span><span>Sb</span><span>Nd</span>
+          </div>
+          <div class="calendar-grid" id="calendarGrid" aria-label="Kalendarz krajów"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-local">
+          <article class="sidebar-card">
+            <span class="muted-label">Lokalizacja i losowe miejsca</span>
+            <h3 id="localTitle">Wykrywam automatycznie</h3>
+            <p id="localStatus">Przeglądarka może poprosić o zgodę. Zanim odpowie, pokazuję losowe aktywne miejsca na dziś.</p>
+          </article>
+          <div class="local-results" id="localResults"></div>
+        </section>
+
+      </section>
+
+      <section class="main-stage" aria-label="Interaktywna mapa">
+        <div class="map-controls" aria-label="Sterowanie mapą">
+          <button class="map-control-button" id="focusCountry" type="button" aria-label="Skup mapę na wylosowanym kraju" title="Skup mapę"><svg class="ui-icon" aria-hidden="true"><use href="#icon-crosshair"></use></svg></button>
+          <div class="map-layer-picker" id="layerPicker">
+            <button class="layer-toggle" id="layerToggle" type="button" aria-label="Wybierz warstwę mapy" aria-expanded="false" aria-controls="layerMenu" title="Warstwy"><svg class="ui-icon" aria-hidden="true"><use href="#icon-layers"></use></svg></button>
+            <div class="layer-menu" id="layerMenu" hidden>
+              <button class="layer-option active" data-map-type="light" type="button"><svg class="ui-icon" aria-hidden="true"><use href="#icon-map"></use></svg><span>Light</span></button>
+              <button class="layer-option" data-map-type="dark" type="button"><svg class="ui-icon" aria-hidden="true"><use href="#icon-moon"></use></svg><span>Dark</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="globe-wrap">
+          <div id="leafletMap" class="leaflet-map" aria-label="Mapa Leaflet OpenStreetMap ze znacznikiem wybranego kraju"></div>
+          <canvas id="globeCanvas" width="1200" height="1200" aria-label="Płaska mapa ze znacznikiem wybranego kraju"></canvas>
+          <div class="map-loader glass-panel" id="mapLoader">
+            <strong>Ładuję OpenStreetMap</strong>
+            <span>Mapa dziala na Leaflet i kafelkach OSM bez klucza API.</span>
+          </div>
+        </div>
+
+        <div class="info-grid sr-only" aria-hidden="true">
+          <article class="glass-panel info-card">
+            <span class="muted-label">Plan smakowy</span>
+            <h2 id="mainDish">-</h2>
+            <p id="mainDishText">-</p>
+          </article>
+          <article class="glass-panel info-card">
+            <span class="muted-label">Plan ruchowy</span>
+            <h2 id="mainAdventure">-</h2>
+            <p id="mainAdventureText">-</p>
+          </article>
+          <article class="glass-panel info-card">
+            <span class="muted-label">Lokalny impuls</span>
+            <h2 id="mainLocal">Czeka na lokalizację</h2>
+            <p id="mainLocalText">Po wykryciu pozycji pokażę najbliższe aktywne miejsca z listy zapisanej w aplikacji.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script
+      src="vendor/leaflet/leaflet.js"
+    ></script>
+    <script src="app.js"></script>
+  </body>
+</html>
